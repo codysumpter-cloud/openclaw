@@ -110,7 +110,7 @@ export type TelegramAccountConfig = {
      * - "off": disable preview updates
      * - "partial": edit a single preview message
      * - "block": stream in larger chunked updates
-     * - "progress": alias that maps to "partial" on Telegram
+     * - "progress": send one bounded progress update, then replace it with the final answer
      *
      * Legacy boolean values are still accepted and auto-migrated.
      */
