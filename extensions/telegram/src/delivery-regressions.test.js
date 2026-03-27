@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import {
 	createLaneTextDeliverer,
 	createTelegramBoundedProgressController,
-	createTelegramTurnDeliveryState
+	createTelegramTurnDeliveryState,
+	shouldSuppressLocalTelegramExecApprovalPrompt
 } from "../../../dist/plugin-sdk/thread-bindings-SYAnWHuW.js";
 
 function createDelivererHarness(options = {}) {
@@ -159,4 +160,58 @@ test("#99 bounded progress stays quiet when delivery is already visible", async 
 	assert.equal(turnState.hasProgressUpdateSent(), false);
 
 	controller.cancel();
+});
+
+test("/exec does not suppress Telegram approval prompts when Telegram exec approvals are disabled", () => {
+	const suppressed = shouldSuppressLocalTelegramExecApprovalPrompt({
+		cfg: {
+			channels: {
+				telegram: {
+					execApprovals: {
+						enabled: false,
+						approvers: ["12345"]
+					}
+				}
+			}
+		},
+		accountId: "default",
+		payload: {
+			text: "Approval required.",
+			channelData: {
+				execApproval: {
+					approvalId: "approval-123",
+					approvalSlug: "abc123"
+				}
+			}
+		}
+	});
+
+	assert.equal(suppressed, false);
+});
+
+test("/exec suppresses the local Telegram approval prompt only when Telegram exec approvals are enabled", () => {
+	const suppressed = shouldSuppressLocalTelegramExecApprovalPrompt({
+		cfg: {
+			channels: {
+				telegram: {
+					execApprovals: {
+						enabled: true,
+						approvers: ["12345"]
+					}
+				}
+			}
+		},
+		accountId: "default",
+		payload: {
+			text: "Approval required.",
+			channelData: {
+				execApproval: {
+					approvalId: "approval-123",
+					approvalSlug: "abc123"
+				}
+			}
+		}
+	});
+
+	assert.equal(suppressed, true);
 });
