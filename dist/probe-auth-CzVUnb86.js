@@ -8,13 +8,7 @@ async function probeGateway(opts) {
 	let connectLatencyMs = null;
 	let connectError = null;
 	let close = null;
-	const disableDeviceIdentity = (() => {
-		try {
-			return isLoopbackHost(new URL(opts.url).hostname);
-		} catch {
-			return false;
-		}
-	})();
+	const disableDeviceIdentity = false;
 	return await new Promise((resolve) => {
 		let settled = false;
 		const settle = (result) => {
@@ -61,35 +55,27 @@ async function probeGateway(opts) {
 					});
 					return;
 				}
-				try {
-					const [health, status, presence, configSnapshot] = await Promise.all([
-						client.request("health"),
-						client.request("status"),
-						client.request("system-presence"),
-						client.request("config.get", {})
-					]);
-					settle({
-						ok: true,
-						connectLatencyMs,
-						error: null,
-						close,
-						health,
-						status,
-						presence: Array.isArray(presence) ? presence : null,
-						configSnapshot
-					});
-				} catch (err) {
-					settle({
-						ok: false,
-						connectLatencyMs,
-						error: formatErrorMessage(err),
-						close,
-						health: null,
-						status: null,
-						presence: null,
-						configSnapshot: null
-					});
-				}
+				const [healthResult, statusResult, presenceResult, configResult] = await Promise.allSettled([
+					client.request("health"),
+					client.request("status"),
+					client.request("system-presence"),
+					client.request("config.get", {})
+				]);
+				const health = healthResult.status === "fulfilled" ? healthResult.value : null;
+				const status = statusResult.status === "fulfilled" ? statusResult.value : null;
+				const presence = presenceResult.status === "fulfilled" && Array.isArray(presenceResult.value) ? presenceResult.value : null;
+				const configSnapshot = configResult.status === "fulfilled" ? configResult.value : null;
+				const errors = [healthResult, statusResult, presenceResult, configResult].flatMap((result) => result.status === "rejected" ? [formatErrorMessage(result.reason)] : []);
+				settle({
+					ok: health !== null,
+					connectLatencyMs,
+					error: errors.length > 0 ? errors.join("; ") : null,
+					close,
+					health,
+					status,
+					presence,
+					configSnapshot
+				});
 			}
 		});
 		const timer = setTimeout(() => {

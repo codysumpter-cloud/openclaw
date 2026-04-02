@@ -1071,7 +1071,7 @@ async function statusAllCommand(runtime, opts) {
 			auth: probeAuth,
 			timeoutMs: Math.min(5e3, opts?.timeoutMs ?? 1e4)
 		}).catch(() => null);
-		const gatewayReachable = gatewayProbe?.ok === true;
+		const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.error?.includes("missing scope: operator.read") === true;
 		const gatewaySelf = pickGatewaySelfPresence(gatewayProbe?.presence ?? null);
 		progress.tick();
 		progress.setLabel("Checking services…");
@@ -1400,11 +1400,12 @@ async function getAgentLocalStatuses(cfg = loadConfig()) {
 }
 //#endregion
 //#region src/commands/status.gateway-probe.ts
-function resolveGatewayProbeAuthResolution(cfg) {
+function resolveGatewayProbeAuthResolution(cfg, explicitAuth) {
 	return resolveGatewayProbeAuthSafe({
 		cfg,
 		mode: cfg.gateway?.mode === "remote" ? "remote" : "local",
-		env: process.env
+		env: process.env,
+		explicitAuth
 	});
 }
 //#endregion
@@ -1640,7 +1641,10 @@ async function resolveGatewayProbeSnapshot(params) {
 	const remoteUrlRaw = typeof params.cfg.gateway?.remote?.url === "string" ? params.cfg.gateway.remote.url : "";
 	const remoteUrlMissing = isRemoteMode && !remoteUrlRaw.trim();
 	const gatewayMode = isRemoteMode ? "remote" : "local";
-	const gatewayProbeAuthResolution = resolveGatewayProbeAuthResolution(params.cfg);
+	const gatewayProbeAuthResolution = resolveGatewayProbeAuthResolution(params.cfg, {
+		token: typeof params.opts.token === "string" ? params.opts.token : void 0,
+		password: typeof params.opts.password === "string" ? params.opts.password : void 0
+	});
 	let gatewayProbeAuthWarning = gatewayProbeAuthResolution.warning;
 	const gatewayProbe = remoteUrlMissing ? null : await probeGateway({
 		url: gatewayConnection.url,
@@ -1730,7 +1734,7 @@ async function scanStatusJsonFast(opts) {
 	]);
 	const tailscaleHttpsUrl = tailscaleMode !== "off" && tailscaleDns ? `https://${tailscaleDns}${normalizeControlUiBasePath(cfg.gateway?.controlUi?.basePath)}` : null;
 	const { gatewayConnection, remoteUrlMissing, gatewayMode, gatewayProbeAuth, gatewayProbeAuthWarning, gatewayProbe } = gatewaySnapshot;
-	const gatewayReachable = gatewayProbe?.ok === true;
+	const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.error?.includes("missing scope: operator.read") === true;
 	const gatewaySelf = gatewayProbe?.presence ? pickGatewaySelfPresence(gatewayProbe.presence) : null;
 	const channelsStatusPromise = resolveChannelsStatus({
 		cfg,
@@ -1822,7 +1826,7 @@ async function scanStatus(opts, _runtime) {
 			cfg,
 			opts
 		});
-		const gatewayReachable = gatewayProbe?.ok === true;
+		const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.error?.includes("missing scope: operator.read") === true;
 		const gatewaySelf = gatewayProbe?.presence ? pickGatewaySelfPresence(gatewayProbe.presence) : null;
 		progress.tick();
 		progress.setLabel("Querying channel status…");

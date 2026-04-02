@@ -1074,7 +1074,7 @@ async function statusAllCommand(runtime, opts) {
 			auth: probeAuth,
 			timeoutMs: Math.min(5e3, opts?.timeoutMs ?? 1e4)
 		}).catch(() => null);
-		const gatewayReachable = gatewayProbe?.ok === true;
+		const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.error?.includes("missing scope: operator.read") === true;
 		const gatewaySelf = pickGatewaySelfPresence(gatewayProbe?.presence ?? null);
 		progress.tick();
 		progress.setLabel("Checking services…");
@@ -1733,7 +1733,7 @@ async function scanStatusJsonFast(opts) {
 	]);
 	const tailscaleHttpsUrl = tailscaleMode !== "off" && tailscaleDns ? `https://${tailscaleDns}${normalizeControlUiBasePath(cfg.gateway?.controlUi?.basePath)}` : null;
 	const { gatewayConnection, remoteUrlMissing, gatewayMode, gatewayProbeAuth, gatewayProbeAuthWarning, gatewayProbe } = gatewaySnapshot;
-	const gatewayReachable = gatewayProbe?.ok === true;
+	const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.error?.includes("missing scope: operator.read") === true;
 	const gatewaySelf = gatewayProbe?.presence ? pickGatewaySelfPresence(gatewayProbe.presence) : null;
 	const channelsStatusPromise = resolveChannelsStatus({
 		cfg,
@@ -1825,7 +1825,7 @@ async function scanStatus(opts, _runtime) {
 			cfg,
 			opts
 		});
-		const gatewayReachable = gatewayProbe?.ok === true;
+		const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.error?.includes("missing scope: operator.read") === true;
 		const gatewaySelf = gatewayProbe?.presence ? pickGatewaySelfPresence(gatewayProbe.presence) : null;
 		progress.tick();
 		progress.setLabel("Querying channel status…");
