@@ -1,0 +1,11 @@
+
+# Local dependencies and scratch files
+node_modules/
+.DS_Store
+*.backup
+*.bak
+*.orig
+*.working
+
+# npm lockfile noise in pnpm-managed repo
+package-lock.json
